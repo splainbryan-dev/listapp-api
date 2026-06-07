@@ -69,4 +69,4 @@ const detectIssues = async (draft, platformRules) => {
   return issues;
 };
 
-module.exports = { shortenTitle, rewriteDescription, detectIssues };
+module.exports = { callClaude, shortenTitle, rewriteDescription, detectIssues };

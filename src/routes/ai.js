@@ -46,3 +46,29 @@ router.post('/rewrite-description/:draftId', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+// AI suggest category from title
+router.post('/suggest-category', auth, async (req, res) => {
+  const { title } = req.body
+  if (!title) return res.status(400).json({ error: 'Title required' })
+
+  const categories = ['vehicles','electronics','furniture','clothing','tools','appliances','sports','gaming','garden','collectibles','kids','general']
+
+  try {
+    const { callClaude } = require('../services/aiService')
+    const prompt = `Given this item listing title: "${title}"
+
+Which category does it belong to? Choose EXACTLY ONE from this list:
+vehicles, electronics, furniture, clothing, tools, appliances, sports, gaming, garden, collectibles, kids, general
+
+Reply with ONLY the category id, nothing else.`
+
+    const result = await callClaude(prompt)
+    const categoryId = result.trim().toLowerCase().replace(/[^a-z]/g, '')
+    const matched = categories.find(c => categoryId.includes(c)) || 'general'
+    
+    res.json({ categoryId: matched })
+  } catch (err) {
+    res.json({ categoryId: 'general' })
+  }
+})
