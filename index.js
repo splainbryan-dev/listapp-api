@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./src/routes/auth');
 const listingRoutes = require('./src/routes/listings');
@@ -10,7 +11,22 @@ const platformRoutes = require('./src/routes/platforms');
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = [
+      'http://localhost:5173',
+      'https://hubads.netlify.app'
+    ]
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
+  credentials: true
+}));
+
+app.use(cookieParser());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
