@@ -105,5 +105,65 @@ router.get('/google/callback', async (req, res) => {
     res.redirect(`${process.env.CLIENT_URL}/login?error=oauth_failed`)
   }
 })
+// X OAuth - redirect to X
+router.get('/x', (req, res) => {
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: process.env.TWITTER_CLIENT_ID,
+    redirect_uri: `${process.env.SERVER_URL}/api/auth/x/callback`,
+    scope: 'tweet.read users.read offline.access',
+    state: 'state123',
+    code_challenge: 'challenge',
+    code_challenge_method: 'plain',
+  })
+  res.redirect(`https://twitter.com/i/oauth2/authorize?${params}`)
+})
 
+// X OAuth callback
+router.get('/x/callback', async (req, res) => {
+  const { code } = req.query
+  if (!code) return res.redirect(`${process.env.CLIENT_URL}/login?error=cancelled`)
+
+  try {
+    const credentials = Buffer.from(`${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`).toString('base64')
+    const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${credentials}`
+      },
+      body: new URLSearchParams({
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: `${process.env.SERVER_URL}/api/auth/x/callback`,
+        code_verifier: 'challenge',
+      })
+    })
+    const tokenData = await tokenRes.json()
+
+    const userRes = await fetch('https://api.twitter.com/2/users/me', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    })
+    const xUser = await userRes.json()
+    const xData = xUser.data
+
+    let result = await pool.query('SELECT * FROM users WHERE email = $1', [`x_${xData.id}@hubads.app`])
+    let user
+    if (result.rows.length === 0) {
+      const newUser = await pool.query(
+        'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING *',
+        [`x_${xData.id}@hubads.app`, xData.name, 'x_oauth_no_password']
+      )
+      user = newUser.rows[0]
+    } else {
+      user = result.rows[0]
+    }
+
+    const token = generateToken(user)
+    res.redirect(`${process.env.CLIENT_URL}/auth/callback?token=${token}&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}&id=${user.id}`)
+  } catch (err) {
+    console.error('X OAuth error:', err)
+    res.redirect(`${process.env.CLIENT_URL}/login?error=oauth_failed`)
+  }
+})
 module.exports = router;
