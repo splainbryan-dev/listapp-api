@@ -28,6 +28,7 @@ const generateDrafts = async (listingId) => {
     craigslist: 'plain and straightforward, no markdown or formatting. End with "Text or call to arrange viewing."',
     offerup: 'concise and punchy. Lead with the best feature. Keep it scannable.',
     ebay: 'professional and detailed. Use clear sections. Mention condition, what\'s included, and any defects honestly.',
+    nextdoor: 'friendly and community-focused, like you are selling to a neighbor. Mention the neighborhood or area. Keep it warm and personal.',
   };
 
   const drafts = [];
