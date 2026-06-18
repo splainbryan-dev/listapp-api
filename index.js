@@ -7,6 +7,7 @@ const authRoutes = require('./src/routes/auth');
 const listingRoutes = require('./src/routes/listings');
 const draftRoutes = require('./src/routes/drafts');
 const aiRoutes = require('./src/routes/ai');
+const ebayAuthRoutes = require('./src/routes/ebayAuth');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/drafts', draftRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/ebay-auth', ebayAuthRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
