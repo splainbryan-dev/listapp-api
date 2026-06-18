@@ -1,5 +1,5 @@
 const express = require('express');
-const auth = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const router = express.Router();
 
@@ -10,14 +10,24 @@ const SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.account',
 ].join(' ');
 
-// Step 1 — redirect user to eBay login
-router.get('/connect', auth, (req, res) => {
+// Step 1 — redirect user to eBay login (token comes from query string, not headers)
+router.get('/connect', (req, res) => {
+  const { token } = req.query;
+  if (!token) return res.redirect(`${process.env.CLIENT_URL}/login?error=session_expired`);
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    return res.redirect(`${process.env.CLIENT_URL}/login?error=session_expired`);
+  }
+
   const params = new URLSearchParams({
     client_id: process.env.EBAY_SANDBOX_CLIENT_ID,
     redirect_uri: process.env.EBAY_RU_NAME,
     response_type: 'code',
     scope: SCOPES,
-    state: req.user.id.toString(),
+    state: decoded.id.toString(),
   });
   res.redirect(`${EBAY_AUTH_URL}?${params}`);
 });
