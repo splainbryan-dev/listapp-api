@@ -22,7 +22,7 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-// Step 1 — redirect user to eBay login (token comes from query string, not headers)
+// Step 1 — redirect user to eBay login
 router.get('/connect', (req, res) => {
   const { token } = req.query;
   if (!token) return res.redirect(`${process.env.CLIENT_URL}/login?error=session_expired`);
@@ -42,7 +42,7 @@ router.get('/connect', (req, res) => {
   res.redirect(`${EBAY_AUTH_URL}?${params}`);
 });
 
-// Step 2 — eBay redirects back here with a code
+// Step 2 — eBay redirects back here with a code (fallback, may not fire in sandbox)
 router.get('/callback', async (req, res) => {
   const { code, state } = req.query;
   if (!code) return res.redirect(`${process.env.CLIENT_URL}/settings?error=ebay_cancelled`);
@@ -67,12 +67,11 @@ router.get('/callback', async (req, res) => {
       console.error('eBay token exchange failed:', tokenData);
       return res.redirect(`${process.env.CLIENT_URL}/settings?error=ebay_failed`);
     }
-    const userId = state;
     await pool.query(
       `INSERT INTO user_platforms (user_id, platform, access_token, connected, connected_at)
        VALUES ($1, 'ebay', $2, true, NOW())
        ON CONFLICT (user_id, platform) DO UPDATE SET access_token=$2, connected=true, connected_at=NOW()`,
-      [userId, JSON.stringify(tokenData)]
+      [state, JSON.stringify(tokenData)]
     );
     res.redirect(`${process.env.CLIENT_URL}/settings?success=ebay_connected`);
   } catch (err) {
@@ -81,7 +80,45 @@ router.get('/callback', async (req, res) => {
   }
 });
 
-// Step 3 — polling endpoint: frontend checks if eBay is connected
+// Step 2b — frontend extracts code from popup URL and POSTs it here
+router.post('/exchange', authenticateToken, async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'No code provided' });
+  try {
+    const credentials = Buffer.from(
+      `${process.env.EBAY_SANDBOX_CLIENT_ID}:${process.env.EBAY_SANDBOX_CLIENT_SECRET}`
+    ).toString('base64');
+    const tokenRes = await fetch(EBAY_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${credentials}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: process.env.EBAY_RU_NAME,
+      }),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      console.error('eBay exchange failed:', tokenData);
+      return res.status(400).json({ error: 'Token exchange failed', details: tokenData });
+    }
+    await pool.query(
+      `INSERT INTO user_platforms (user_id, platform, access_token, connected, connected_at)
+       VALUES ($1, 'ebay', $2, true, NOW())
+       ON CONFLICT (user_id, platform) DO UPDATE SET access_token=$2, connected=true, connected_at=NOW()`,
+      [req.user.id, JSON.stringify(tokenData)]
+    );
+    res.json({ connected: true });
+  } catch (err) {
+    console.error('eBay exchange error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Status check for polling
 router.get('/status', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
