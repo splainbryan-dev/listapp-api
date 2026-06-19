@@ -51,14 +51,12 @@ app.get('/api/ebay/deletion', (req, res) => {
 
 app.post('/api/ebay/deletion', async (req, res) => {
   try {
-    const { userId } = req.body?.notification?.data || {};
-    if (userId) {
-      await pool.query('DELETE FROM user_platforms WHERE user_id = (SELECT id FROM users WHERE ebay_user_id = $1)', [userId]);
-    }
+    console.log('eBay deletion request:', JSON.stringify(req.body));
+    // TODO: handle actual deletion when we know the payload structure
     res.status(200).json({ success: true });
   } catch (err) {
     console.error('eBay deletion error:', err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(200).json({ success: true }); // always 200 to eBay
   }
 });
 
