@@ -3,8 +3,9 @@ const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const router = express.Router();
 
-const EBAY_AUTH_URL = 'https://auth.sandbox.ebay.com/oauth2/authorize';
-const EBAY_TOKEN_URL = 'https://api.sandbox.ebay.com/identity/v1/oauth2/token';
+// ✅ Production URLs (not sandbox)
+const EBAY_AUTH_URL = 'https://auth.ebay.com/oauth2/authorize';
+const EBAY_TOKEN_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 const SCOPES = [
   'https://api.ebay.com/oauth/api_scope/sell.inventory',
   'https://api.ebay.com/oauth/api_scope/sell.account',
@@ -33,7 +34,7 @@ router.get('/connect', (req, res) => {
     return res.redirect(`${process.env.CLIENT_URL}/login?error=session_expired`);
   }
   const params = new URLSearchParams({
-    client_id: process.env.EBAY_SANDBOX_CLIENT_ID,
+    client_id: process.env.EBAY_CLIENT_ID,           // ✅ production env var
     redirect_uri: process.env.EBAY_RU_NAME,
     response_type: 'code',
     scope: SCOPES,
@@ -42,13 +43,13 @@ router.get('/connect', (req, res) => {
   res.redirect(`${EBAY_AUTH_URL}?${params}`);
 });
 
-// Step 2 — eBay redirects back here with a code (fallback, may not fire in sandbox)
+// Step 2 — eBay redirects back here with a code
 router.get('/callback', async (req, res) => {
   const { code, state } = req.query;
   if (!code) return res.redirect(`${process.env.CLIENT_URL}/settings?error=ebay_cancelled`);
   try {
     const credentials = Buffer.from(
-      `${process.env.EBAY_SANDBOX_CLIENT_ID}:${process.env.EBAY_SANDBOX_CLIENT_SECRET}`
+      `${process.env.EBAY_CLIENT_ID}:${process.env.EBAY_CLIENT_SECRET}` // ✅ production
     ).toString('base64');
     const tokenRes = await fetch(EBAY_TOKEN_URL, {
       method: 'POST',
@@ -86,7 +87,7 @@ router.post('/exchange', authenticateToken, async (req, res) => {
   if (!code) return res.status(400).json({ error: 'No code provided' });
   try {
     const credentials = Buffer.from(
-      `${process.env.EBAY_SANDBOX_CLIENT_ID}:${process.env.EBAY_SANDBOX_CLIENT_SECRET}`
+      `${process.env.EBAY_CLIENT_ID}:${process.env.EBAY_CLIENT_SECRET}` // ✅ production
     ).toString('base64');
     const tokenRes = await fetch(EBAY_TOKEN_URL, {
       method: 'POST',
