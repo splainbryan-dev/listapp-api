@@ -8,6 +8,7 @@ const listingRoutes = require('./src/routes/listings');
 const draftRoutes = require('./src/routes/drafts');
 const aiRoutes = require('./src/routes/ai');
 const ebayAuthRoutes = require('./src/routes/ebayAuth');
+const platformRoutes = require('./src/routes/platforms');
 const pool = require('./src/db');
 
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/listings', listingRoutes);
 app.use('/api/drafts', draftRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/ebay-auth', ebayAuthRoutes);
+app.use('/api/platforms', platformRoutes); // ✅ was missing
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 // eBay Marketplace Account Deletion endpoint
