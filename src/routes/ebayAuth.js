@@ -46,7 +46,7 @@ router.get('/connect', (req, res) => {
 // Step 2 — eBay redirects back here with a code
 router.get('/callback', async (req, res) => {
   const { code, state } = req.query;
-  if (!code) return res.redirect(`${process.env.CLIENT_URL}/settings?error=ebay_cancelled`);
+  if (!code) return res.redirect(`${process.env.CLIENT_URL}/auth/ebay-callback?error=ebay_cancelled`);
   try {
     const credentials = Buffer.from(
       `${process.env.EBAY_CLIENT_ID}:${process.env.EBAY_CLIENT_SECRET}` // ✅ production
@@ -66,7 +66,7 @@ router.get('/callback', async (req, res) => {
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
       console.error('eBay token exchange failed:', tokenData);
-      return res.redirect(`${process.env.CLIENT_URL}/settings?error=ebay_failed`);
+      return res.redirect(`${process.env.CLIENT_URL}/auth/ebay-callback?error=ebay_failed`);
     }
     await pool.query(
       `INSERT INTO user_platforms (user_id, platform, access_token, connected, connected_at)
@@ -74,10 +74,10 @@ router.get('/callback', async (req, res) => {
        ON CONFLICT (user_id, platform) DO UPDATE SET access_token=$2, connected=true, connected_at=NOW()`,
       [state, JSON.stringify(tokenData)]
     );
-    res.redirect(`${process.env.CLIENT_URL}/settings?success=ebay_connected`);
+    res.redirect(`${process.env.CLIENT_URL}/auth/ebay-callback?success=true`);
   } catch (err) {
     console.error('eBay OAuth error:', err);
-    res.redirect(`${process.env.CLIENT_URL}/settings?error=ebay_failed`);
+    res.redirect(`${process.env.CLIENT_URL}/auth/ebay-callback?error=ebay_failed`);
   }
 });
 
