@@ -50,13 +50,8 @@ app.get('/api/ebay/deletion', (req, res) => {
 });
 
 app.post('/api/ebay/deletion', async (req, res) => {
-  try {
-    console.log('eBay deletion request:', JSON.stringify(req.body));
-    res.status(200).json({ success: true });
-  } catch (err) {
-    console.error('eBay deletion error:', err);
-    res.status(200).json({ success: true });
-  }
+  console.log('eBay deletion request:', JSON.stringify(req.body));
+  res.status(200).json({ success: true });
 });
 
 const PORT = process.env.PORT || 3001;
